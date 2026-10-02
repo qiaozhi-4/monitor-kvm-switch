@@ -1,40 +1,41 @@
-# VG27AQML1A 输入源切换脚本
+# ASUS VG27AQML1A 输入源切换
 
-这个仓库包含两台电脑切换同一台 ASUS VG27AQML1A 显示器输入源的脚本：
+在 Windows 上用 ControlMyMonitor 的两个快捷方式切换显示器输入源：DisplayPort 接 Windows，HDMI 接 Mac。切到 Windows 后，按对应的 Windows 快捷键即可切换显示器输入。
 
-| 在哪台电脑运行 | 脚本 | 切换结果 |
+## 1. 下载并解压 ControlMyMonitor
+
+1. 打开 [ControlMyMonitor 官方下载页](https://www.nirsoft.net/utils/control_my_monitor.html)。
+2. 点击页面底部的 **Download ControlMyMonitor**，下载 ZIP 压缩包并解压到固定目录，例如 `C:\Tools\ControlMyMonitor`。
+3. 确认显示器菜单中的 **DDC/CI** 已开启，然后运行解压目录里的 `ControlMyMonitor.exe`。这是免安装工具，后续快捷方式会直接调用这个程序。
+
+## 2. 确认显示器和输入值
+
+在 ControlMyMonitor 窗口中，从下方的显示器列表选择 ASUS VG27AQML1A，并确认列表里有 **Input Select**（VCP Code `60`）。本机的输入值对应关系是：
+
+| VCP Code `60` 的值 | 输入源 | 连接的电脑 |
 | --- | --- | --- |
-| macOS | `./switch_to_win.sh` | 切到 DisplayPort / Windows，输入值 `15` |
-| Windows | `switch_to_mac.bat` | 切到 HDMI / Mac，输入值 `17` |
+| `15` | DisplayPort | Windows |
+| `17` | HDMI | Mac |
 
-脚本使用显示器的 DDC/CI 输入选择 VCP `0x60`。Windows 上的 `17` 已由 ControlMyMonitor 验证可切回 Mac；Mac 脚本按 BetterDisplay 官方 CLI 格式发送 VCP `0x60`、值 `15`，实际切换仍待本机 CLI 通信恢复后验证。
+如果列表中的显示器名称不是 `VG27AQML1A`，按 `Ctrl+M` 复制显示器标识，并在下方快捷方式命令中用唯一的显示器名称、序列号或 Short Monitor ID 替换它。多台显示器时应使用唯一标识。
 
-## macOS 准备
+## 3. 创建两个快捷方式
 
-1. 安装并运行 `/Applications/BetterDisplay.app`。
-2. 安装 BetterDisplay 官方 CLI `betterdisplaycli`。本机安装路径为 `/opt/homebrew/bin/betterdisplaycli`。
-3. 确认 BetterDisplay 的 `Settings > Application > Integration` 中 CLI / 通知集成没有被关闭（官方文档说明默认开启）。
-4. 在仓库目录执行：
+在解压目录中右键 `ControlMyMonitor.exe`，选择 **创建快捷方式**，将快捷方式复制到桌面并复制一份。分别重命名为“切换到 Windows”和“切换到 Mac”。
 
-   ```sh
-   ./switch_to_win.sh
-   ```
+逐个右键快捷方式，打开 **属性 > 快捷方式**，在 **目标** 的程序路径后添加对应参数。假设程序放在 `C:\Tools\ControlMyMonitor`，目标应为：
 
-如果脚本报告 BetterDisplay 没有响应，脚本会保留 CLI 的错误码和诊断信息。本机目前在 BetterDisplay 已启动、集成偏好已开启时，CLI 仍会超时，因此 Mac 到 Windows 的实际切换尚未确认。
+| 快捷方式 | 目标 | 用途 |
+| --- | --- | --- |
+| 切换到 Windows | `"C:\Tools\ControlMyMonitor\ControlMyMonitor.exe" /SetValue "VG27AQML1A" 60 15` | 切到 DisplayPort |
+| 切换到 Mac | `"C:\Tools\ControlMyMonitor\ControlMyMonitor.exe" /SetValue "VG27AQML1A" 60 17` | 切到 HDMI |
 
-## Windows 准备
+如果 ControlMyMonitor 不在示例目录，先把两行中的程序路径改成实际的 `ControlMyMonitor.exe` 路径。保留路径两侧的引号，并把 `/SetValue ...` 参数放在结束引号之后。
 
-将 `ControlMyMonitor.exe` 放在 `switch_to_mac.bat` 同一目录，或把它所在目录加入 `PATH`。双击 `switch_to_mac.bat` 即可切到 Mac。
+## 4. 设置并使用键盘快捷键
 
-脚本默认按显示器名 `VG27AQML1A` 定位。如果 ControlMyMonitor 中显示的名称不同，或同型号显示器不止一台，请编辑 `MONITOR_ID`，填入 ControlMyMonitor 的 Monitor Device Name、序列号或其他唯一标识。可在 ControlMyMonitor 中选中显示器并按 `Ctrl+M` 查看这些标识。
+仍在每个快捷方式的 **属性 > 快捷方式** 页面，点击 **快捷键** 输入框，按下想使用的组合键，然后点击 **应用**。例如，可以给“切换到 Windows”设置 `Ctrl+Alt+1`，给“切换到 Mac”设置 `Ctrl+Alt+2`；也可以使用自己习惯且未被其他程序占用的组合键。
 
-## 当前安装记录
+之后先把键盘切到 Windows，再按对应组合键：`15` 切到 Windows 的 DisplayPort，`17` 切到 Mac 的 HDMI。第一次设置时可双击两个快捷方式，确认显示器输入源切换正确。
 
-- BetterDisplay 4.3.7 已安装到 `/Applications/BetterDisplay.app`，并能识别 VG27AQML1A。
-- BetterDisplay 官方 `betterdisplaycli` 1.0.1 已安装到 `/opt/homebrew/bin/betterdisplaycli`。
-- 本机 macOS 为 26.2；检查过官方 BetterDisplay 5.0.5 安装包，其最低系统版本为 26.3，因此保留兼容的 4.3.7。
-- 已在 BetterDisplay 设置界面确认 CLI / 通知集成开关为开启。只读读取 VCP `0x60` 时，`betterdisplaycli` 仍等待通知响应并超时，因此暂不能确认脚本是否能实际切换显示器输入源。
-
-## 仓库
-
-本目录已初始化为 Git 仓库，主分支为 `main`。
+如果按快捷键没有切换，先确认显示器已开启 DDC/CI、快捷方式目标中的程序路径和显示器标识正确，并在 ControlMyMonitor 中确认该屏幕显示 VCP Code `60`。
