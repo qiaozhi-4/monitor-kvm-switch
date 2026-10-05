@@ -43,23 +43,21 @@
 
 ## 4. 根据键鼠 USB 连接自动切换
 
-这台键鼠切换器在 Windows 上会产生 USB 断开和重新接入事件。日志中的 Logitech G610 设备序列号是 `117F313B3633`；`usb_event_switch.ps1` 只响应这个序列号，忽略同一次切换产生的 Hub、鼠标和 HID 子设备事件。
+这台键鼠切换器在 Windows 上会产生 USB 断开和重新接入事件。USBLogView 将事件写入日志文件；`usb_event_switch.ps1` 读取新增日志，只响应 Logitech G610 的序列号 `117F313B3633`，忽略同一次切换产生的 Hub、鼠标和 HID 子设备事件。
 
-1. 从 [USBDeview 官方页面](https://www.nirsoft.net/utils/usb_devices_view.html) 下载并运行 USBDeview。
+1. 从 [USBLogView 官方页面](https://www.nirsoft.net/utils/usb_log_view.html) 下载并运行 USBLogView。
 2. 将仓库中的 `usb_event_switch.ps1` 复制到 `C:\Tools\ControlMyMonitor`，与 `ControlMyMonitor.exe` 放在同一目录。
-3. 在 USBDeview 打开 **Options > Advanced Options**，分别启用插入设备和拔出设备时执行命令。
-4. 插入事件命令填入：
+3. 在 USBLogView 按 `F9` 打开 **Options > Advanced Options**，启用 **Add every plug/unplug event into a log file**，将日志文件设为 `C:\Tools\ControlMyMonitor\usb-events.log`。此处只需配置事件写入日志文件。
+4. 启动事件监听脚本：
 
    ```text
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Tools\ControlMyMonitor\usb_event_switch.ps1" -Action Plug -SerialNumber "%serial_number%"
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Tools\ControlMyMonitor\usb_event_switch.ps1" -LogPath "C:\Tools\ControlMyMonitor\usb-events.log"
    ```
 
-5. 拔出事件命令填入：
+5. 保持 USBLogView 和 PowerShell 监听脚本运行，切换键鼠到 Mac 再切回 Windows，确认显示器依次切到 `17` 和 `15`。要让它们每次登录后自动运行，可按 `Win+R`，输入 `shell:startup`，把 USBLogView 的快捷方式以及监听脚本的快捷方式放进打开的启动文件夹。监听脚本快捷方式的目标可设为：
 
    ```text
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Tools\ControlMyMonitor\usb_event_switch.ps1" -Action Unplug -SerialNumber "%serial_number%"
+   powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Tools\ControlMyMonitor\usb_event_switch.ps1" -LogPath "C:\Tools\ControlMyMonitor\usb-events.log"
    ```
 
-6. 先保持 USBDeview 运行，切换键鼠到 Mac 再切回 Windows，确认显示器依次切到 `17` 和 `15`。要让监听器每次登录后自动运行，可按 `Win+R`，输入 `shell:startup`，再把 USBDeview 的快捷方式放进打开的启动文件夹。
-
-PowerShell 脚本会按序列号过滤事件，因此不会因其他 USB 设备或同次切换中的多个 HID 事件而重复切屏。如果 ControlMyMonitor 或显示器标识不同，请相应修改 `usb_event_switch.ps1` 中的路径或常量。USBDeview 可以调用设备接入/断开命令并替换 `%serial_number%` 等设备变量，ControlMyMonitor 通过 `/SetValue` 设置输入源。
+脚本按日志行中的事件类型和序列号切换输入源：`Plug` 对应 DisplayPort（`15`），`Unplug` 对应 HDMI（`17`）。如果 ControlMyMonitor 或显示器标识不同，请相应修改脚本中的路径或常量。
