@@ -31,8 +31,9 @@ Get-Content -LiteralPath $LogPath -Tail 0 -Wait | ForEach-Object {
         $inputValue = if ($action -ieq 'Plug') { 15 } else { 17 }
 
         & $controlMyMonitor /SetValue $monitorIdentifier 60 $inputValue
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "ControlMyMonitor failed with exit code $LASTEXITCODE for USB $action event."
+        $exitCode = $LASTEXITCODE
+        if (-not [string]::IsNullOrWhiteSpace([string]$exitCode) -and [int]$exitCode -ne 0) {
+            Write-Warning "ControlMyMonitor failed with exit code $exitCode for USB $action event."
         }
     }
 }
