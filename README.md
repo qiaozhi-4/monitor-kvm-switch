@@ -2,6 +2,15 @@
 
 本项目在 Windows 上监听键鼠切换器产生的 USB 插拔事件，并通过显示器 DDC/CI 切换输入源。项目内已附带 USBLogView 和 ControlMyMonitor；首次填写本机参数后，日常只需运行 `start.cmd`。
 
+## 获取项目
+
+在 Windows 上打开 PowerShell 或命令提示符，克隆本仓库并进入项目目录：
+
+```text
+git clone https://github.com/qiaozhi-4/monitor-kvm-switch.git
+cd monitor-kvm-switch
+```
+
 ## 首次配置
 
 确认显示器菜单中的 **DDC/CI** 已开启，并保持 Windows 与 Mac 分别连接到预期的 DisplayPort 和 HDMI 输入。
