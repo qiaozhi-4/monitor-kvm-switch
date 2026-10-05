@@ -1,73 +1,37 @@
-# ASUS VG27AQML1A 输入源切换
+# ASUS VG27AQML1A 输入源自动切换
 
-在 Windows 上可以用 `Ctrl+Alt+M` 手动切换，也可以让键鼠切换器的 USB 接入/断开事件自动切换显示器输入源：DisplayPort 接 Windows，HDMI 接 Mac。
+本项目在 Windows 上监听键鼠切换器产生的 USB 插拔事件，并通过显示器 DDC/CI 切换输入源。项目内已附带 USBLogView 和 ControlMyMonitor；首次填写本机参数后，日常只需运行 `start.cmd`。
 
-## 1. 工具目录
+## 首次配置
 
-当前目录配置：
+确认显示器菜单中的 **DDC/CI** 已开启，并保持 Windows 与 Mac 分别连接到预期的 DisplayPort 和 HDMI 输入。
 
-- USBLogView：`E:\nirsoft\usblogview`（程序为 `USBLogView.exe`）
-- ControlMyMonitor：`E:\nirsoft\controlmymonitor`（程序为 `ControlMyMonitor.exe`）
-- 自动切换脚本：`E:\nirsoft\controlmymonitor\usb_event_switch.ps1`
+1. 打开 `tools\ControlMyMonitor\ControlMyMonitor.exe`，选择要控制的显示器，按 **Ctrl+M** 复制显示器信息。将 `Monitor Device Name` 填入 `switch-config.psd1` 的 `MonitorIdentifier`。在工具中确认 **Input Select** 的 VCP Code 为 `60`，再将 DisplayPort 和 HDMI 对应的 Value 填入 `DisplayPortInputValue` 与 `HdmiInputValue`。
+2. 打开 `tools\USBLogView\USBLogView.exe`，分别把键鼠切换到两台电脑，观察产生 Plug/Unplug 事件的设备。将目标设备的 **Serial Number** 填入 `TargetSerialNumber`；选能唯一对应目标设备的序列号，不要选 Hub、鼠标或 HID 子设备。
+3. 保存 `switch-config.psd1`。配置文件带有字段注释；正常使用不需要编辑 `usb_event_switch.ps1`，也不需要手动输入 PowerShell 命令。
 
-确认显示器菜单中的 **DDC/CI** 已开启。ControlMyMonitor 是免安装工具。
+示例配置沿用当前设备参数：序列号 `117F313B3633`、显示器标识 `\\.\DISPLAY1\Monitor0`、DisplayPort 值 `15`、HDMI 值 `17`。首次使用时请用本机读取到的值替换示例值。
 
-## 2. 确认显示器和输入值
+## 日常运行
 
-在 ControlMyMonitor 窗口中选择 ASUS 显示器，并确认列表里有 **Input Select**（VCP Code `60`）。本机的输入值对应关系是：
+双击项目根目录中的 `start.cmd`，在菜单中选择“现在启动监听”。它会启动 USBLogView，并自动通过 PowerShell 运行事件监听；保持 USBLogView 与命令窗口运行。关闭监听命令窗口可停止监听，再关闭 USBLogView 停止记录。`.ps1` 由启动器调用，无需手动打开或运行，也无需输入 PowerShell 命令。
 
-| VCP Code `60` 的值 | 输入源 | 连接的电脑 |
-| --- | --- | --- |
-| `15` | DisplayPort | Windows |
-| `17` | HDMI | Mac |
+菜单中的“启用当前用户登录自启动”会在当前 Windows 账户登录时自动启动本项目；“禁用当前用户登录自启动”会移除该启动项。禁用后已运行的监听仍会继续，关闭监听窗口即可停止。登录自启动会直接启动监听，不会显示菜单。
 
-显示器标识使用 `\\.\DISPLAY1\Monitor0`。这是从 ControlMyMonitor 的 **Ctrl+M**（Copy Monitor Settings）复制的 Monitor Device Name。像 `VG27AQML1A` 这样的型号名如果无法识别，就使用 Ctrl+M 复制出的标识；有多台显示器时，标识必须唯一。
+USBLogView 的 `USBLogView.cfg` 已启用插拔事件日志，并将文件名设为 `usb-events.log`。启动器以 USBLogView 所在目录作为工作目录，因此日志实际位于 `tools\USBLogView\usb-events.log`，移动整个项目目录后仍可使用。
 
-自动切换脚本的设备参数定义在 `usb_event_switch.ps1` 开头附近。更换键鼠切换器、显示器或输入源后，按下表找到对应值并修改脚本：
+目标序列号匹配后，`Plug` 事件切到 DisplayPort，`Unplug` 事件切到 HDMI。其他设备的事件会被忽略。
 
-| 脚本参数 | 取值方法 |
-| --- | --- |
-| `$LogPath` | 运行脚本时用 `-LogPath` 指定；值必须与 USBLogView **F9 > Advanced Options** 中设置的日志文件路径相同。省略参数时，默认读取脚本目录下的 `usb-events.log`。 |
-| `$targetSerialNumber` | 在 USBLogView 的设备事件中找到切换键鼠时会产生 Plug/Unplug 记录的设备，读取其 **Serial Number**。分别切换两台电脑，确认该序列号属于目标设备而非 Hub、鼠标或 HID 子设备。 |
-| `$monitorIdentifier` | 在 ControlMyMonitor 中选中要控制的屏幕，按 **Ctrl+M**，复制 **Monitor Device Name**。多屏时应为目标屏幕选择唯一标识。 |
-| `$displayPortInputValue`、`$hdmiInputValue` | 在 ControlMyMonitor 中查看目标屏幕 **Input Select**（VCP Code `60`）对应的 **Value**。按实际连接关系分别填写 DP 和 HDMI 的值；例如 Mac 的 HDMI 值变为 `18` 时，将 `$hdmiInputValue` 改为 `18`。 |
-| VCP Code `60` | 在 ControlMyMonitor 列表中确认 **Input Select** 对应的 VCP Code；脚本用它指定要修改的显示器功能。 |
-| `$controlMyMonitor` | 脚本会自动从自身目录查找 `ControlMyMonitor.exe`，无需改变量；确保 exe 与脚本放在同一目录。 |
+## 可选：手动切换
 
-## 3. 创建一个切换快捷方式
-
-创建 `ControlMyMonitor.exe` 的快捷方式并放到桌面。右键快捷方式，打开 **属性 > 快捷方式**，将 **目标** 设置为：
+如需手动切换显示器，可在项目根目录打开命令提示符并运行下面的示例命令。请将显示器标识和两个输入值替换为 `switch-config.psd1` 中的配置：
 
 ```text
-"E:\nirsoft\controlmymonitor\ControlMyMonitor.exe" /SwitchValue "\\.\DISPLAY1\Monitor0" 60 15 17
+"tools\ControlMyMonitor\ControlMyMonitor.exe" /SwitchValue "\\.\DISPLAY1\Monitor0" 60 15 17
 ```
 
-可在命令提示符中直接运行同一命令；可执行文件路径只写一次，后面紧跟 `/SwitchValue` 参数。
-如果输入源值变化，这个手动快捷方式也要同步修改目标末尾的两个输入值；例如 Mac 的 HDMI 值从 `17` 改为 `18`，将末尾的 `15 17` 改为 `15 18`。
+## 工具与兼容性
 
-仍在 **属性 > 快捷方式** 页面，点击 **快捷键** 输入框，按下 `Ctrl+Alt+M`，然后点击 **应用**。
+工具版本、官方来源和 SHA-256 校验值见 [`tools/README.md`](tools/README.md)。USBLogView 官方说明列出的系统支持范围到 Windows 10；ControlMyMonitor 支持 Windows 11。Windows 11 上的 USBLogView 兼容性需要在目标电脑上确认。
 
-之后先把键盘切到 Windows，按一次快捷键即可切换到另一台电脑对应的显示器输入：当前是 `15`（DisplayPort / Windows）时会切到 `17`（HDMI / Mac）；当前是 `17` 时会切回 `15`。
-
-如果按快捷键没有切换，先确认显示器已开启 DDC/CI、快捷方式目标中的程序路径和显示器标识正确，并在 ControlMyMonitor 中确认该屏幕显示 VCP Code `60`。
-
-## 4. 根据键鼠 USB 连接自动切换
-
-这台键鼠切换器在 Windows 上会产生 USB 断开和重新接入事件。USBLogView 将事件写入日志文件；`usb_event_switch.ps1` 读取新增日志，只响应 Logitech G610 的序列号 `117F313B3633`，忽略同一次切换产生的 Hub、鼠标和 HID 子设备事件。
-
-1. 运行 `E:\nirsoft\usblogview\USBLogView.exe`。如尚未下载，可从 [USBLogView 官方页面](https://www.nirsoft.net/utils/usb_log_view.html) 获取。
-2. 将仓库中的 `usb_event_switch.ps1` 复制到 `E:\nirsoft\controlmymonitor`，与 `ControlMyMonitor.exe` 放在同一目录。
-3. 在 USBLogView 按 `F9` 打开 **Options > Advanced Options**，启用 **Add every plug/unplug event into a log file**，将日志文件设为 `E:\nirsoft\usblogview\usb-events.log`。此处只需配置事件写入日志文件。
-4. 启动事件监听脚本：
-
-   ```text
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "E:\nirsoft\controlmymonitor\usb_event_switch.ps1" -LogPath "E:\nirsoft\usblogview\usb-events.log"
-   ```
-
-5. 保持 USBLogView 和 PowerShell 监听脚本运行，切换键鼠到 Mac 再切回 Windows，确认显示器依次切到 `$hdmiInputValue` 和 `$displayPortInputValue` 当前配置的输入。要让它们每次登录后自动运行，可按 `Win+R`，输入 `shell:startup`，把 `E:\nirsoft\usblogview\USBLogView.exe` 的快捷方式以及监听脚本的快捷方式放进打开的启动文件夹。监听脚本快捷方式的目标可设为：
-
-   ```text
-   powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "E:\nirsoft\controlmymonitor\usb_event_switch.ps1" -LogPath "E:\nirsoft\usblogview\usb-events.log"
-   ```
-
-脚本按日志行中的事件类型和序列号切换输入源：`Plug` 使用 `$displayPortInputValue` 切到 DisplayPort，`Unplug` 使用 `$hdmiInputValue` 切到 HDMI。当前默认值分别为 `15` 和 `17`；输入源值或设备变化时，按上表获取并修改脚本开头的配置。脚本会从自身所在目录调用 `ControlMyMonitor.exe`，目标显示器标识由 `$monitorIdentifier` 指定。
+如果没有发生切换，请先确认 DDC/CI 已开启、VCP Code 与输入值正确，并检查 `usb-events.log` 中是否出现配置的序列号和 Plug/Unplug 事件。
