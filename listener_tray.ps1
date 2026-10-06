@@ -1,5 +1,23 @@
 ﻿Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+public static class MonitorKvmWindow {
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr windowHandle);
+}
+'@
 
 $projectDirectory = $PSScriptRoot
 $usbLogViewDirectory = Join-Path $projectDirectory 'tools\USBLogView'
@@ -14,6 +32,7 @@ $script:trayIcon = $null
 $script:trayMenu = $null
 $script:pollTimer = $null
 $script:trayContext = $null
+$script:usbLogViewWindowHandle = [IntPtr]::Zero
 
 try {
     $script:listenerProcess = Start-Process -FilePath $powershell `
@@ -28,6 +47,9 @@ try {
 
     $script:trayContext = New-Object System.Windows.Forms.ApplicationContext
     $script:trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
+    $showMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
+    $showMenuItem.Text = '显示 USBLogView'
+    [void]$script:trayMenu.Items.Add($showMenuItem)
     $stopMenuItem = New-Object System.Windows.Forms.ToolStripMenuItem
     $stopMenuItem.Text = '停止监听并关闭两个程序'
     [void]$script:trayMenu.Items.Add($stopMenuItem)
@@ -38,15 +60,31 @@ try {
     $script:trayIcon.ContextMenuStrip = $script:trayMenu
     $script:trayIcon.Visible = $true
 
+    $showMenuItem.Add_Click({
+        if ($script:usbLogViewWindowHandle -ne [IntPtr]::Zero -and
+            [MonitorKvmWindow]::IsWindow($script:usbLogViewWindowHandle)) {
+            [void][MonitorKvmWindow]::ShowWindow($script:usbLogViewWindowHandle, 9)
+            [void][MonitorKvmWindow]::SetForegroundWindow($script:usbLogViewWindowHandle)
+        }
+    })
     $stopMenuItem.Add_Click({ $script:trayContext.ExitThread() })
 
     $script:pollTimer = New-Object System.Windows.Forms.Timer
-    $script:pollTimer.Interval = 1000
+    $script:pollTimer.Interval = 250
     $script:pollTimer.Add_Tick({
         $script:listenerProcess.Refresh()
         $script:usbLogViewProcess.Refresh()
         if ($script:listenerProcess.HasExited -or $script:usbLogViewProcess.HasExited) {
             $script:trayContext.ExitThread()
+            return
+        }
+
+        $windowHandle = $script:usbLogViewProcess.MainWindowHandle
+        if ($windowHandle -ne [IntPtr]::Zero) {
+            $script:usbLogViewWindowHandle = $windowHandle
+            if ([MonitorKvmWindow]::IsIconic($windowHandle)) {
+                [void][MonitorKvmWindow]::ShowWindow($windowHandle, 0)
+            }
         }
     })
     $script:pollTimer.Start()
