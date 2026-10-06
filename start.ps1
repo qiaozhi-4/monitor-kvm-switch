@@ -8,6 +8,7 @@ $usbLogView = Join-Path $usbLogViewDirectory 'USBLogView.exe'
 $usbLogViewConfig = Join-Path $usbLogViewDirectory 'USBLogView.cfg'
 $controlMyMonitor = Join-Path $projectDirectory 'tools\ControlMyMonitor\ControlMyMonitor.exe'
 $listenerScript = Join-Path $projectDirectory 'usb_event_switch.ps1'
+$trayHostScript = Join-Path $projectDirectory 'listener_tray.ps1'
 $switchConfig = Join-Path $projectDirectory 'switch-config.psd1'
 $startupDirectory = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
 $autostartLink = Join-Path $startupDirectory 'Monitor KVM Switch.lnk'
@@ -18,7 +19,8 @@ function Invoke-Listener {
         $usbLogView,
         $usbLogViewConfig,
         $controlMyMonitor,
-        $listenerScript
+        $listenerScript,
+        $trayHostScript
     )
     $missingFiles = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($missingFiles.Count -gt 0) {
@@ -27,21 +29,21 @@ function Invoke-Listener {
         return 2
     }
 
-    Write-Host '正在启动 USBLogView 和事件监听。关闭监听窗口即可停止监听。'
+    Write-Host '正在启动 USBLogView 和事件监听。'
     try {
-        Start-Process -FilePath $usbLogView -WorkingDirectory $usbLogViewDirectory
+        $trayArguments = '-NoLogo -NoProfile -STA -ExecutionPolicy Bypass -File "{0}"' -f $trayHostScript
+        Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') `
+            -ArgumentList $trayArguments `
+            -WorkingDirectory $projectDirectory `
+            -WindowStyle Hidden
     }
     catch {
-        Write-Host "无法启动 USBLogView：$($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "无法启动通知区域控制程序：$($_.Exception.Message)" -ForegroundColor Red
         return 2
     }
 
-    & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $listenerScript
-    $listenerExitCode = $LASTEXITCODE
-    if ($listenerExitCode -ne 0) {
-        Write-Host "监听已结束，退出码：$listenerExitCode" -ForegroundColor Yellow
-    }
-    return $listenerExitCode
+    Write-Host '已启动。请在通知区域使用图标；启动窗口即将关闭。'
+    return 0
 }
 
 function Enable-Autostart {
@@ -103,9 +105,11 @@ while ($true) {
 
     $menuChoice = Read-Host '请选择 [1-4]'
     if ($menuChoice -eq '1') {
-        [void](Invoke-Listener)
-        [void](Read-Host '按 Enter 返回菜单')
-        continue
+        $exitCode = Invoke-Listener
+        if ($exitCode -ne 0) {
+            [void](Read-Host '请检查项目文件，然后按 Enter 关闭此窗口')
+        }
+        exit $exitCode
     }
     if ($menuChoice -eq '2') {
         Enable-Autostart
