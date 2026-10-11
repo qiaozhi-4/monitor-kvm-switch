@@ -43,6 +43,7 @@ try {
 
     $script:usbLogViewProcess = Start-Process -FilePath $usbLogView `
         -WorkingDirectory $usbLogViewDirectory `
+        -WindowStyle Minimized `
         -PassThru
 
     $script:trayContext = New-Object System.Windows.Forms.ApplicationContext
