@@ -1,3 +1,4 @@
 .DS_Store
 Thumbs.db
 tools/USBLogView/usb-events.log
+tools/USBLogView/usb-events.[1-6].log

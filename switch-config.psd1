@@ -15,6 +15,6 @@
     # Unplug 事件切到另一台电脑使用的 HDMI。
     HdmiInputValue = 17
 
-    # USBLogView.cfg 也将事件写到这个文件。路径相对于项目目录。
+    # 当前日期的日志固定使用此文件名，旧日志按序号轮换保留。路径相对于项目目录。
     LogPath = 'tools\USBLogView\usb-events.log'
 }

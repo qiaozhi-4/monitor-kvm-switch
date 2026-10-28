@@ -27,7 +27,7 @@ cd monitor-kvm-switch
 
 菜单中的“启用当前用户登录自启动”会在当前 Windows 账户登录时自动启动本项目；“禁用当前用户登录自启动”会移除该启动项。禁用后已运行的监听仍会继续，可通过通知区域的监听控制图标停止。登录自启动会直接启动监听，不会显示菜单。
 
-USBLogView 的 `USBLogView.cfg` 已启用插拔事件日志，并将文件名设为 `usb-events.log`。启动器以 USBLogView 所在目录作为工作目录，因此日志实际位于 `tools\USBLogView\usb-events.log`，移动整个项目目录后仍可使用。
+USB 插拔事件当天固定写入 `tools\USBLogView\usb-events.log`；同一天多次启动会继续使用这个文件。跨午夜时，旧日志按 `usb-events.1.log` 到 `usb-events.6.log` 轮换保存，保留当天和之前 6 天的文件。跨日重启后会根据目标 USB 设备当前连接状态重新同步显示器输入。移动整个项目目录后仍可使用。
 
 目标序列号匹配后，`Plug` 事件切到 DisplayPort，`Unplug` 事件切到 HDMI。其他设备的事件会被忽略。
 

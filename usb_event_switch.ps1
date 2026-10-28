@@ -1,4 +1,8 @@
-﻿$configPath = Join-Path $PSScriptRoot 'switch-config.psd1'
+﻿param(
+    [switch]$ReconcileTargetDevice
+)
+
+$configPath = Join-Path $PSScriptRoot 'switch-config.psd1'
 if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     Write-Error "未找到配置文件：$configPath"
     exit 2
@@ -83,7 +87,33 @@ if (-not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
 
 Write-Host "正在监听 USB 序列号 $targetSerialNumber 的插拔事件；按 Ctrl+C 停止。"
 
-Get-Content -LiteralPath $LogPath -Tail 0 -Wait | ForEach-Object {
+$tailCount = 0
+if ($ReconcileTargetDevice) {
+    try {
+        $matchingDevices = @(
+            Get-PnpDevice -PresentOnly -ErrorAction Stop | Where-Object {
+                $instanceId = [string]$_.InstanceId
+                -not [string]::IsNullOrWhiteSpace($instanceId) -and
+                    $instanceId.IndexOf($targetSerialNumber, [StringComparison]::OrdinalIgnoreCase) -ge 0
+            }
+        )
+        $inputValue = if ($matchingDevices.Count -gt 0) { $displayPortInputValue } else { $hdmiInputValue }
+
+        # 跨日重启期间可能错过插拔事件；按目标设备当前连接状态补齐输入切换。
+        & $controlMyMonitor /SetValue $monitorIdentifier $vcpCode $inputValue
+        $exitCode = $LASTEXITCODE
+        if (-not [string]::IsNullOrWhiteSpace([string]$exitCode) -and [int]$exitCode -ne 0) {
+            Write-Warning "跨日后同步显示器输入失败，退出码为 $exitCode。"
+        }
+    }
+    catch {
+        Write-Warning "无法读取目标 USB 设备当前状态，跳过跨日输入同步：$($_.Exception.Message)"
+    }
+
+    $tailCount = [int]::MaxValue
+}
+
+Get-Content -LiteralPath $LogPath -Tail $tailCount -Wait | ForEach-Object {
     $line = $_
     # 一次切换可能产生 Hub 和 HID 子设备事件；只匹配配置中的序列号。
     if ($line.IndexOf($targetSerialNumber, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and
